@@ -15,6 +15,32 @@ extension RequestCookie on shelf.Request {
 
     return cookies;
   }
+
+  Cookie? cookie(String name) {
+    return cookies[name];
+  }
+
+  Cookie setCookie(
+    String name,
+    String value, {
+    String? domain,
+    String? path,
+    DateTime? expires,
+    bool? httpOnly,
+    bool? secure,
+    int? maxAge,
+  }) {
+    return cookies.set(
+      name,
+      value,
+      domain: domain,
+      path: path,
+      expires: expires,
+      httpOnly: httpOnly,
+      maxAge: maxAge,
+      secure: secure,
+    );
+  }
 }
 
 /// Creates a Shelf [Middleware] to parse cookies.
