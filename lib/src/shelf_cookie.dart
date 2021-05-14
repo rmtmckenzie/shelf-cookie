@@ -5,6 +5,18 @@ import 'package:shelf/shelf.dart' as shelf;
 
 import 'cookie_parser.dart';
 
+extension RequestCookie on shelf.Request {
+  CookieParser get cookies {
+    final cookies = context['cookies'] as CookieParser?;
+
+    if (cookies == null) {
+      throw StateError("cookieParser not added as middleware.");
+    }
+
+    return cookies;
+  }
+}
+
 /// Creates a Shelf [Middleware] to parse cookies.
 ///
 /// Adds a [CookieParser] instance to `request.context['cookies']`,

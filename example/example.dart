@@ -5,10 +5,8 @@ import 'package:shelf_cookie/shelf_cookie.dart';
 void main() {
   /// Request contains cookie header.
   /// e.g. 'cookie': 'ping=foo'
-  var handler = const shelf.Pipeline()
-      .addMiddleware(cookieParser())
-      .addHandler((req) async {
-    CookieParser cookies = req.context['cookies'];
+  var handler = const shelf.Pipeline().addMiddleware(cookieParser()).addHandler((req) async {
+    CookieParser cookies = req.cookies;
     if (cookies.get('ping') != null) {
       // Clear cookies because Shelf currently only supports
       // a single `Set-Cookie` header in response.

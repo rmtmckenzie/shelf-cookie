@@ -2,6 +2,27 @@ import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 
+Cookie makeCookie(
+  String name,
+  String value, {
+  String? domain,
+  String? path,
+  DateTime? expires,
+  bool? httpOnly,
+  bool? secure,
+  int? maxAge,
+}) {
+  final cookie = Cookie(name, value);
+  if (domain != null) cookie.domain = domain;
+  if (path != null) cookie.path = path;
+  if (expires != null) cookie.expires = expires;
+  if (httpOnly != null) cookie.httpOnly = httpOnly;
+  if (secure != null) cookie.secure = secure;
+  if (maxAge != null) cookie.maxAge = maxAge;
+
+  return cookie;
+}
+
 /// Parses cookies from the `Cookie` header of a [Request].
 ///
 /// Stores all cookies in a [cookies] list, and has convenience
@@ -14,7 +35,7 @@ class CookieParser {
   final List<Cookie> cookies = [];
 
   /// Creates a new [CookieParser] by parsing the `Cookie` header [value].
-  CookieParser.fromCookieValue(String value) {
+  CookieParser.fromCookieValue(String? value) {
     if (value != null) {
       cookies.addAll(_parseCookieString(value));
     }
@@ -29,21 +50,34 @@ class CookieParser {
   bool get isEmpty => cookies.isEmpty;
 
   /// Retrieves a cookie by [name].
-  Cookie get(String name) => cookies
-      .firstWhere((Cookie cookie) => cookie.name == name, orElse: () => null);
+  Cookie? get(String name) =>
+      cookies.cast<Cookie?>().firstWhere((Cookie? cookie) => cookie!.name == name, orElse: () => null);
+
+  operator [](String name) => get(name);
+
+  Cookie setCookie(Cookie cookie) {
+    // Update existing cookie, or append new one to list.
+    var index = cookies.indexWhere((item) => item.name == cookie.name);
+    if (index != -1) {
+      cookies.replaceRange(index, index + 1, [cookie]);
+    } else {
+      cookies.add(cookie);
+    }
+    return cookie;
+  }
 
   /// Adds a new cookie to [cookies] list.
   Cookie set(
     String name,
     String value, {
-    String domain,
-    String path,
-    DateTime expires,
-    bool httpOnly,
-    bool secure,
-    int maxAge,
+    String? domain,
+    String? path,
+    DateTime? expires,
+    bool? httpOnly,
+    bool? secure,
+    int? maxAge,
   }) {
-    var cookie = Cookie(name, value);
+    final cookie = Cookie(name, value);
     if (domain != null) cookie.domain = domain;
     if (path != null) cookie.path = path;
     if (expires != null) cookie.expires = expires;
@@ -62,8 +96,7 @@ class CookieParser {
   }
 
   /// Removes a cookie from list by [name].
-  void remove(String name) =>
-      cookies.removeWhere((Cookie cookie) => cookie.name == name);
+  void remove(String name) => cookies.removeWhere((Cookie cookie) => cookie.name == name);
 
   /// Clears the cookie list.
   void clear() => cookies.clear();
@@ -85,17 +118,21 @@ class CookieParser {
   String toString() {
     return cookies.fold(
       '',
-      (prev, element) => prev.isEmpty
-          ? element.toString()
-          : '${prev.toString()}, ${element.toString()}',
+      (prev, element) => prev.isEmpty ? element.toString() : '${prev.toString()}, ${element.toString()}',
     );
+  }
+
+  /// Converts the cookies to a list of string values to use in
+  /// `Set-Cookie` headers.
+  Iterable<String> toStrings() {
+    return cookies.map((cookie) => cookie.toString());
   }
 }
 
 /// Parse a Cookie header value according to the rules in RFC 6265.
 /// This function was adapted from `dart:io`.
 List<Cookie> _parseCookieString(String s) {
-  var cookies = List<Cookie>();
+  final cookies = <Cookie>[];
 
   int index = 0;
 
