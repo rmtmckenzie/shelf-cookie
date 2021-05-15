@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 
+import 'parse_cookie_string.dart';
+import 'shelf_cookie.dart';
+
 Cookie makeCookie(
   String name,
   String value, {
@@ -30,14 +33,24 @@ Cookie makeCookie(
 ///
 /// `toString()` method converts list items to a `Set-Cookie`
 /// HTTP header value according to RFC 2109 spec (deprecated).
+///
+/// `toStrings()` method converts list items to a set of
+/// `Set-Cookie` HTTP header values according to RFC
 class CookieParser {
   /// A list of parsed cookies.
   final List<Cookie> cookies = [];
 
+  Iterable<Cookie> get secureCookies => cookies.where((cookie) => cookie.secure == true);
+
+  /// Whether to only deal with secure cookies. When set to true,
+  /// any attempt to add an insecure cookie will result in an exception,
+  /// and no insecure cookies will be written out to the 'Set-Cookie' header.
+  bool secureOnly = false;
+
   /// Creates a new [CookieParser] by parsing the `Cookie` header [value].
   CookieParser.fromCookieValue(String? value) {
     if (value != null) {
-      cookies.addAll(_parseCookieString(value));
+      cookies.addAll(parseCookieString(value, (name, value) => ShelfCookie.fromSetCookieValue(value)));
     }
   }
 
@@ -56,6 +69,10 @@ class CookieParser {
   operator [](String name) => get(name);
 
   Cookie setCookie(Cookie cookie) {
+    if (secureOnly && !cookie.secure) {
+      throw UnsupportedError("Cookies must be secure when cookie set to secure");
+    }
+
     // Update existing cookie, or append new one to list.
     var index = cookies.indexWhere((item) => item.name == cookie.name);
     if (index != -1) {
@@ -77,21 +94,18 @@ class CookieParser {
     bool? secure,
     int? maxAge,
   }) {
-    final cookie = Cookie(name, value);
-    if (domain != null) cookie.domain = domain;
-    if (path != null) cookie.path = path;
-    if (expires != null) cookie.expires = expires;
-    if (httpOnly != null) cookie.httpOnly = httpOnly;
-    if (secure != null) cookie.secure = secure;
-    if (maxAge != null) cookie.maxAge = maxAge;
+    final cookie = ShelfCookie(
+      name: name,
+      value: value,
+      domain: domain,
+      path: path,
+      expires: expires,
+      httpOnly: httpOnly ?? true,
+      secure: secure ?? true,
+      maxAge: maxAge,
+    );
 
-    // Update existing cookie, or append new one to list.
-    var index = cookies.indexWhere((item) => item.name == name);
-    if (index != -1) {
-      cookies.replaceRange(index, index + 1, [cookie]);
-    } else {
-      cookies.add(cookie);
-    }
+    setCookie(cookie);
     return cookie;
   }
 
@@ -116,7 +130,7 @@ class CookieParser {
   ///
   /// https://github.com/dart-lang/shelf/issues/44
   String toString() {
-    return cookies.fold(
+    return (secureOnly ? cookies : secureCookies).fold(
       '',
       (prev, element) => prev.isEmpty ? element.toString() : '${prev.toString()}, ${element.toString()}',
     );
@@ -125,74 +139,6 @@ class CookieParser {
   /// Converts the cookies to a list of string values to use in
   /// `Set-Cookie` headers.
   Iterable<String> toStrings() {
-    return cookies.map((cookie) => cookie.toString());
+    return (secureOnly ? cookies : secureCookies).map((cookie) => cookie.toString());
   }
-}
-
-/// Parse a Cookie header value according to the rules in RFC 6265.
-/// This function was adapted from `dart:io`.
-List<Cookie> _parseCookieString(String s) {
-  final cookies = <Cookie>[];
-
-  int index = 0;
-
-  bool done() => index == -1 || index == s.length;
-
-  void skipWS() {
-    while (!done()) {
-      if (s[index] != " " && s[index] != "\t") return;
-      index++;
-    }
-  }
-
-  String parseName() {
-    int start = index;
-    while (!done()) {
-      if (s[index] == " " || s[index] == "\t" || s[index] == "=") break;
-      index++;
-    }
-    return s.substring(start, index);
-  }
-
-  String parseValue() {
-    int start = index;
-    while (!done()) {
-      if (s[index] == " " || s[index] == "\t" || s[index] == ";") break;
-      index++;
-    }
-    return s.substring(start, index);
-  }
-
-  bool expect(String expected) {
-    if (done()) return false;
-    if (s[index] != expected) return false;
-    index++;
-    return true;
-  }
-
-  while (!done()) {
-    skipWS();
-    if (done()) continue;
-    String name = parseName();
-    skipWS();
-    if (!expect("=")) {
-      index = s.indexOf(';', index);
-      continue;
-    }
-    skipWS();
-    String value = parseValue();
-    try {
-      cookies.add(Cookie(name, value));
-    } catch (_) {
-      // Skip it, invalid cookie data.
-    }
-    skipWS();
-    if (done()) continue;
-    if (!expect(";")) {
-      index = s.indexOf(';', index);
-      continue;
-    }
-  }
-
-  return cookies;
 }

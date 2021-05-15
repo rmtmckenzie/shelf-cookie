@@ -1,7 +1,7 @@
 import 'dart:io';
 
-class ShelfCookie implements Cookie {
-  ShelfCookie({
+class SecureCookie implements Cookie {
+  SecureCookie({
     required this.name,
     required this.value,
     this.domain,
@@ -9,19 +9,17 @@ class ShelfCookie implements Cookie {
     this.httpOnly = true,
     this.maxAge,
     this.path,
-    this.secure = true,
   });
 
-  factory ShelfCookie.fromSetCookieValue(String value) {
-    return ShelfCookie.fromCookie(Cookie.fromSetCookieValue(value));
+  factory SecureCookie.fromSetCookieValue(String value) {
+    return SecureCookie.fromCookie(Cookie.fromSetCookieValue(value));
   }
 
-  factory ShelfCookie.fromCookie(Cookie cookie) {
-    return ShelfCookie(
+  factory SecureCookie.fromCookie(Cookie cookie) {
+    return SecureCookie(
       name: cookie.name,
       value: cookie.value,
       domain: cookie.domain,
-      secure: cookie.secure,
       maxAge: cookie.maxAge,
       httpOnly: cookie.httpOnly,
       expires: cookie.expires,
@@ -51,9 +49,9 @@ class ShelfCookie implements Cookie {
   final String? path;
 
   @override
-  final bool secure;
+  bool get secure => true;
 
-  ShelfCookie copyWith(
+  SecureCookie copyWith(
     String? name,
     String? value,
     String? domain,
@@ -61,9 +59,8 @@ class ShelfCookie implements Cookie {
     bool? httpOnly,
     int? maxAge,
     String? path,
-    bool? secure,
   ) {
-    return ShelfCookie(
+    return SecureCookie(
       name: name ?? this.name,
       value: value ?? this.value,
       domain: domain ?? this.domain,
@@ -71,48 +68,47 @@ class ShelfCookie implements Cookie {
       httpOnly: httpOnly ?? this.httpOnly,
       maxAge: maxAge ?? this.maxAge,
       path: path ?? this.path,
-      secure: secure ?? this.secure,
     );
   }
 
   @override
   set domain(String? _domain) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set expires(DateTime? _expires) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set httpOnly(bool _httpOnly) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set maxAge(int? _maxAge) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set name(String _name) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set path(String? _path) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set secure(bool _secure) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
   set value(String _value) {
-    throw UnsupportedError("ShelfCookie doesn't support changing cookie options");
+    throw UnsupportedError("SecureCookie doesn't support changing cookie options");
   }
 
   @override
@@ -122,7 +118,7 @@ class ShelfCookie implements Cookie {
           ..maxAge = maxAge
           ..domain = domain
           ..path = path
-          ..secure = secure
+          ..secure = true
           ..httpOnly = httpOnly)
         .toString();
   }
