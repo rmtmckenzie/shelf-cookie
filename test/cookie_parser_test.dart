@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:shelf_cookie/shelf_cookie.dart';
+import 'package:shelf_cookie/src/cookie_changes.dart';
+import 'package:shelf_cookie/src/cookie_handler.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -17,7 +19,7 @@ void main() {
   });
 
   test('parses cookies from raw headers map', () {
-    var cookies = CookieParser.fromHeader({HttpHeaders.cookieHeader: 'foo=bar; baz=qux'});
+    var cookies = CookieParser.fromHeaders({HttpHeaders.cookieHeader: 'foo=bar; baz=qux'});
     expect(cookies.isEmpty, isFalse);
     expect(cookies.get('foo')?.value, equals('bar'));
     expect(cookies.get('baz')?.value, equals('qux'));
@@ -27,31 +29,49 @@ void main() {
     var cookies = CookieParser.fromCookieValue('foo=bar');
     expect(cookies.isEmpty, isFalse);
     expect(cookies.get('baz'), isNull);
-    cookies.set('baz', 'qux');
-    expect(cookies.get('baz')?.value, 'qux');
+    CookieChanges changes = CookieChanges();
+    changes.add('baz', 'qux');
+
+    final handler = CookieHandler(changes);
+    expect(handler.getCookie('baz')?.value, 'qux');
   });
 
   test('removes cookie from cookies list by name', () {
-    var cookies = CookieParser.fromCookieValue('foo=bar; baz=qux');
-    expect(cookies.get('baz')?.value, equals('qux'));
-    cookies.remove('baz');
-    expect(cookies.get('baz'), isNull);
+    var parser = CookieParser.fromCookieValue('foo=bar; baz=qux');
+    expect(parser.get('baz')?.value, equals('qux'));
+
+    final changes = CookieChanges.fromParser(parser);
+
+    changes.remove('baz');
+
+    final handler = CookieHandler(changes);
+
+    expect(handler.getCookie('baz'), isNull);
   });
 
   test('clears all cookies in list', () {
-    var cookies = CookieParser.fromCookieValue('foo=bar; baz=qux');
-    expect(cookies.get('baz')?.value, equals('qux'));
-    cookies.clear();
-    expect(cookies.isEmpty, isTrue);
+    var parser = CookieParser.fromCookieValue('foo=bar; baz=qux');
+    expect(parser.get('baz')?.value, equals('qux'));
+
+    final changes = CookieChanges.fromParser(parser);
+    changes.clear();
+
+    final handler = CookieHandler(changes);
+    expect(handler.hasValues, isFalse);
   });
 
-  test('folds all cookies into single set-cookie header value', () {
-    var cookies = CookieParser.fromCookieValue('foo=bar');
-    expect(cookies.toString(), equals('foo=bar; HttpOnly'));
-    cookies.set('baz', 'qux', secure: true);
+  test('folds all cookies into multiple set-cookie header values', () {
+    var parser = CookieParser.fromCookieValue('foo=bar');
+    final changes = CookieChanges.fromParser(parser);
+
+    expect(CookieHandler(CookieChanges.fromParser(parser)).asList, equals(['foo=bar']));
+
+    changes.add('baz', 'qux', secure: true);
+
+    final handler = CookieHandler(changes);
     expect(
-      cookies.toString(),
-      equals('foo=bar; HttpOnly, baz=qux; Secure; HttpOnly'),
+      handler.asList,
+      equals(['foo=bar', 'baz=qux; Secure; HttpOnly']),
     );
   });
 

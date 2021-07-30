@@ -1,5 +1,7 @@
 import 'dart:io';
 
+enum SameSite { lax, strict, none }
+
 class ShelfCookie implements Cookie {
   ShelfCookie({
     required this.name,
@@ -10,6 +12,7 @@ class ShelfCookie implements Cookie {
     this.maxAge,
     this.path,
     this.secure = true,
+    this.sameSite,
   });
 
   factory ShelfCookie.fromSetCookieValue(String value) {
@@ -17,6 +20,11 @@ class ShelfCookie implements Cookie {
   }
 
   factory ShelfCookie.fromCookie(Cookie cookie) {
+    SameSite? sameSite;
+    if (cookie is ShelfCookie) {
+      sameSite = cookie.sameSite;
+    }
+
     return ShelfCookie(
       name: cookie.name,
       value: cookie.value,
@@ -26,6 +34,26 @@ class ShelfCookie implements Cookie {
       httpOnly: cookie.httpOnly,
       expires: cookie.expires,
       path: cookie.path,
+      sameSite: sameSite,
+    );
+  }
+
+  factory ShelfCookie.expiredFromCookie(Cookie cookie) {
+    SameSite? sameSite;
+    if (cookie is ShelfCookie) {
+      sameSite = cookie.sameSite;
+    }
+
+    return ShelfCookie(
+      name: cookie.name,
+      value: cookie.value,
+      domain: cookie.domain,
+      secure: cookie.secure,
+      httpOnly: cookie.httpOnly,
+      path: cookie.path,
+      expires: DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+      maxAge: 0,
+      sameSite: sameSite,
     );
   }
 
@@ -53,6 +81,9 @@ class ShelfCookie implements Cookie {
   @override
   final bool secure;
 
+  @override
+  final SameSite? sameSite;
+
   ShelfCookie copyWith(
     String? name,
     String? value,
@@ -62,6 +93,7 @@ class ShelfCookie implements Cookie {
     int? maxAge,
     String? path,
     bool? secure,
+    SameSite? sameSite,
   ) {
     return ShelfCookie(
       name: name ?? this.name,
@@ -72,6 +104,7 @@ class ShelfCookie implements Cookie {
       maxAge: maxAge ?? this.maxAge,
       path: path ?? this.path,
       secure: secure ?? this.secure,
+      sameSite: sameSite ?? this.sameSite,
     );
   }
 
@@ -117,13 +150,40 @@ class ShelfCookie implements Cookie {
 
   @override
   String toString() {
-    return (Cookie(name, value)
-          ..expires = expires
-          ..maxAge = maxAge
-          ..domain = domain
-          ..path = path
-          ..secure = secure
-          ..httpOnly = httpOnly)
-        .toString();
+    // copied from dart:io > http.dart cookie class
+    StringBuffer sb = new StringBuffer();
+    sb..write(name)..write("=")..write(value);
+    var expires = this.expires;
+    if (expires != null) {
+      sb..write("; Expires=")..write(HttpDate.format(expires));
+    }
+    if (maxAge != null) {
+      sb..write("; Max-Age=")..write(maxAge);
+    }
+    if (domain != null) {
+      sb..write("; Domain=")..write(domain);
+    }
+    if (path != null) {
+      sb..write("; Path=")..write(path);
+    }
+    // added to support samesite
+    if (sameSite != null) {
+      late String sameSiteString;
+      switch (sameSite!) {
+        case SameSite.lax:
+          sameSiteString = "Lax";
+          break;
+        case SameSite.strict:
+          sameSiteString = "Strict";
+          break;
+        case SameSite.none:
+          sameSiteString = "None";
+          break;
+      }
+      sb..write("; SameSite=")..write(sameSiteString);
+    }
+    if (secure) sb.write("; Secure");
+    if (httpOnly) sb.write("; HttpOnly");
+    return sb.toString();
   }
 }

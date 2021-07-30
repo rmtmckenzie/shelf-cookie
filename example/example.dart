@@ -1,17 +1,16 @@
 import 'package:shelf/shelf.dart' as shelf;
 import 'package:shelf/shelf_io.dart' as io;
 import 'package:shelf_cookie/shelf_cookie.dart';
+import 'package:shelf_cookie/src/cookie_changes.dart';
 
 void main() {
   /// Request contains cookie header.
   /// e.g. 'cookie': 'ping=foo'
-  var handler = const shelf.Pipeline().addMiddleware(cookieParser()).addHandler((req) async {
+  var handler = const shelf.Pipeline().addMiddleware(cookieMiddleware()).addHandler((req) async {
     CookieParser cookies = req.cookies;
     if (cookies.get('ping') != null) {
-      // Clear cookies because Shelf currently only supports
-      // a single `Set-Cookie` header in response.
-      cookies.clear();
-      cookies.set('pong', 'bar', secure: true);
+      final changes = CookieChanges();
+      changes.add('pong', 'bar', secure: true);
     }
 
     // Response will set cookie header.
